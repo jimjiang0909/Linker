@@ -9,13 +9,10 @@ abstract final class ApiConstants {
   static const String devBaseUrl = 'http://localhost:3000/api';
 
   /// 生产环境 API Base URL
-  static const String prodBaseUrl = 'https://api.linker.app/api';
+  static const String prodBaseUrl = 'https://linker-api-vcpf.onrender.com/api';
 
   /// 当前使用的 API Base URL
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: devBaseUrl,
-  );
+  static const String baseUrl = prodBaseUrl;
 
   // ============ WebSocket ============
 
@@ -23,19 +20,13 @@ abstract final class ApiConstants {
   static const String devWsUrl = 'http://localhost:3000';
 
   /// 生产环境 WebSocket URL
-  static const String prodWsUrl = 'https://api.linker.app';
+  static const String prodWsUrl = 'https://linker-api-vcpf.onrender.com';
 
   /// 当前使用的 WebSocket URL
-  static const String wsUrl = String.fromEnvironment(
-    'WS_URL',
-    defaultValue: devWsUrl,
-  );
+  static const String wsUrl = prodWsUrl;
 
   /// 服务器根地址（用于拼接图片等静态资源路径）
-  static const String serverUrl = String.fromEnvironment(
-    'SERVER_URL',
-    defaultValue: devWsUrl,
-  );
+  static const String serverUrl = prodWsUrl;
 
   /// 将相对路径转为完整图片 URL
   static String fullImageUrl(String path) {
@@ -46,13 +37,13 @@ abstract final class ApiConstants {
   // ============ Timeout ============
 
   /// 请求超时时间（毫秒）
-  static const int connectTimeout = 15000;
+  static const int connectTimeout = 60000;
 
   /// 接收超时时间（毫秒）
-  static const int receiveTimeout = 15000;
+  static const int receiveTimeout = 60000;
 
   /// 发送超时时间（毫秒）
-  static const int sendTimeout = 15000;
+  static const int sendTimeout = 30000;
 
   // ============ Auth Endpoints ============
 

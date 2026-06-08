@@ -61,10 +61,10 @@ app.use(
   })
 );
 
-// Global rate limit: 100 requests per minute per IP
+// Global rate limit: 500 requests per minute per IP
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 100,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -78,7 +78,7 @@ app.use(globalLimiter);
 // Stricter rate limit for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 20, // 20 requests per 10 minutes per IP
+  max: 200, // 200 requests per 10 minutes per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: {
