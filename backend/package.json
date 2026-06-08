@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Linker MVP - AI驱动的私密社交介绍系统后端",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",

@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/router/app_routes.dart';
+import '../../features/conversations/providers/conversations_provider.dart';
 import '../providers/unread_count_provider.dart';
 
 /// 主页面底部导航栏 Shell 组件
@@ -22,6 +23,15 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadCountProvider);
+
+    // 首次进入主页时加载对话列表以获取未读数
+    ref.listen(conversationsProvider, (previous, next) {});
+    final conversationsState = ref.read(conversationsProvider);
+    if (conversationsState is AsyncLoading) {
+      Future.microtask(() {
+        ref.read(conversationsProvider.notifier).fetchConversations();
+      });
+    }
 
     return Scaffold(
       body: child,

@@ -7,6 +7,8 @@ import { Router } from 'express';
 import { authenticate } from '../middlewares/auth.js';
 import prisma from '../lib/prisma.js';
 import { createOrUpdatePreference } from '../services/preferenceService.js';
+import { generateDailyRecommendations } from '../services/aiMatchService.js';
+import { emitToUser } from '../websocket/index.js';
 
 const router = Router();
 
@@ -44,6 +46,15 @@ router.put('/', authenticate, async (req, res, next) => {
     const userId = req.user.userId;
 
     const preference = await createOrUpdatePreference(userId, req.body);
+
+    // 异步触发首次推荐生成（不阻塞响应）
+    generateDailyRecommendations(userId).then((result) => {
+      if (result && result.matchIds && result.matchIds.length > 0) {
+        emitToUser(userId, 'recommendation:new', { count: result.matchIds.length });
+      }
+    }).catch((err) => {
+      console.error('[Preferences] Auto-recommendation failed:', err.message);
+    });
 
     res.json({
       code: 'SUCCESS',

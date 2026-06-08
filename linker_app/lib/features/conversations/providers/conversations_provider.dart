@@ -43,12 +43,13 @@ class ConversationsNotifier extends Notifier<AsyncValue<List<Conversation>>> {
     state = const AsyncValue.loading();
     try {
       final repository = ref.read(conversationRepositoryProvider);
-      final conversations = await repository.getConversations();
+      final result = await repository.getConversations();
+      final conversations = result.conversations;
       // 按最后消息时间倒序排列
       conversations.sort(_sortByLastMessageDesc);
       state = AsyncValue.data(conversations);
-      // 更新全局未读计数
-      _updateUnreadCount(conversations);
+      // 使用后端返回的全局未读总数
+      ref.read(unreadCountProvider.notifier).setCount(result.totalUnreadCount);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }

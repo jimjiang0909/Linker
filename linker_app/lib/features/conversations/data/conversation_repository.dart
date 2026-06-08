@@ -38,19 +38,22 @@ class ConversationRepository {
   ///   "data": [{ "id": "...", "otherUser": {...}, "lastMessage": {...} }]
   /// }
   /// ```
-  Future<List<Conversation>> getConversations() async {
+  /// 获取对话列表结果
+  Future<({List<Conversation> conversations, int totalUnreadCount})> getConversations() async {
     final response = await _apiClient.get(ApiConstants.conversations);
     final json = response.data as Map<String, dynamic>;
     final rawData = json['data'];
     final List<dynamic> data;
+    int totalUnreadCount = 0;
     if (rawData is List) {
       data = rawData;
     } else if (rawData is Map<String, dynamic>) {
       data = rawData['conversations'] as List<dynamic>? ?? [];
+      totalUnreadCount = rawData['totalUnreadCount'] as int? ?? 0;
     } else {
       data = [];
     }
-    return data.map((e) {
+    final conversations = data.map((e) {
       final item = e as Map<String, dynamic>;
       // 如果后端返回的是新结构（含 otherUser），手动映射
       if (item.containsKey('otherUser')) {
@@ -78,6 +81,7 @@ class ConversationRepository {
       // 兼容旧结构（直接平铺字段）
       return Conversation.fromJson(item);
     }).toList();
+    return (conversations: conversations, totalUnreadCount: totalUnreadCount);
   }
 
   /// 获取消息历史（分页）

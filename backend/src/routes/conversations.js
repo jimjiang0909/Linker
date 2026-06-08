@@ -109,6 +109,18 @@ router.get('/', authenticate, async (req, res, next) => {
       };
     }));
 
+    // 计算全局未读总数（不受分页影响）
+    const totalUnreadCount = await prisma.message.count({
+      where: {
+        conversation: {
+          OR: [{ userAId: userId }, { userBId: userId }],
+          status: 'active',
+        },
+        senderId: { not: userId },
+        isRead: false,
+      },
+    });
+
     res.json({
       code: 'SUCCESS',
       message: 'Conversations retrieved successfully',
@@ -117,6 +129,7 @@ router.get('/', authenticate, async (req, res, next) => {
         total,
         page,
         pageSize,
+        totalUnreadCount,
       },
     });
   } catch (err) {

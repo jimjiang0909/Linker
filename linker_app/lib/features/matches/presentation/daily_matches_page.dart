@@ -26,6 +26,7 @@ class DailyMatchesPage extends ConsumerStatefulWidget {
 
 class _DailyMatchesPageState extends ConsumerState<DailyMatchesPage> {
   StreamSubscription<MatchSuccessEvent>? _matchSuccessSubscription;
+  StreamSubscription<NewRecommendationEvent>? _recommendationSubscription;
 
   @override
   void initState() {
@@ -36,6 +37,17 @@ class _DailyMatchesPageState extends ConsumerState<DailyMatchesPage> {
     });
     // 监听 WebSocket match:success 事件
     _listenMatchSuccess();
+    // 监听新推荐事件，自动刷新
+    _listenNewRecommendation();
+  }
+
+  void _listenNewRecommendation() {
+    final wsClient = ref.read(webSocketClientProvider);
+    _recommendationSubscription = wsClient.onNewRecommendation.listen((event) {
+      if (mounted) {
+        ref.read(dailyMatchesProvider.notifier).fetchDailyMatches();
+      }
+    });
   }
 
   void _listenMatchSuccess() {
@@ -50,6 +62,7 @@ class _DailyMatchesPageState extends ConsumerState<DailyMatchesPage> {
   @override
   void dispose() {
     _matchSuccessSubscription?.cancel();
+    _recommendationSubscription?.cancel();
     super.dispose();
   }
 

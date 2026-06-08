@@ -63,12 +63,12 @@ class AuthRepository {
   /// 返回 [AuthResponse] 包含 JWT Token 和用户状态。
   Future<AuthResponse> register({
     required String email,
-    required String code,
+    required String password,
     String? invitationCode,
   }) async {
     final data = <String, dynamic>{
       'email': email,
-      'code': code,
+      'password': password,
     };
     if (invitationCode != null && invitationCode.isNotEmpty) {
       data['invitationCode'] = invitationCode;
@@ -85,13 +85,13 @@ class AuthRepository {
   /// Returns [AuthResponse] with JWT Token and user status.
   Future<AuthResponse> login({
     required String email,
-    required String code,
+    required String password,
   }) async {
     final response = await _apiClient.post(
       '/auth/login',
       data: {
         'email': email,
-        'code': code,
+        'password': password,
       },
     );
     return AuthResponse.fromJson(response.data as Map<String, dynamic>);

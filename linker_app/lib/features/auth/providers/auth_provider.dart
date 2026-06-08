@@ -4,6 +4,8 @@ import '../../../core/network/websocket_client.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/router/route_guard.dart';
 import '../../../core/storage/secure_storage.dart';
+import '../../../shared/providers/unread_count_provider.dart';
+import '../../conversations/providers/conversations_provider.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../data/auth_repository.dart';
 
@@ -38,7 +40,7 @@ class AuthNotifier extends Notifier<AsyncValue<void>> {
   /// 2. 根据返回的 userStatus 更新 UserStatusNotifier
   Future<void> register({
     required String email,
-    required String code,
+    required String password,
     String? invitationCode,
   }) async {
     state = const AsyncLoading<void>();
@@ -48,7 +50,7 @@ class AuthNotifier extends Notifier<AsyncValue<void>> {
 
       final response = await authRepository.register(
         email: email,
-        code: code,
+        password: password,
         invitationCode: invitationCode,
       );
 
@@ -76,7 +78,7 @@ class AuthNotifier extends Notifier<AsyncValue<void>> {
   /// 2. Update UserStatusNotifier based on returned userStatus
   Future<void> login({
     required String email,
-    required String code,
+    required String password,
   }) async {
     state = const AsyncLoading<void>();
     state = await AsyncValue.guard(() async {
@@ -85,7 +87,7 @@ class AuthNotifier extends Notifier<AsyncValue<void>> {
 
       final response = await authRepository.login(
         email: email,
-        code: code,
+        password: password,
       );
 
       await secureStorage.saveToken(response.token);
@@ -117,6 +119,8 @@ class AuthNotifier extends Notifier<AsyncValue<void>> {
     await secureStorage.deleteRefreshToken();
     webSocketClient.disconnect();
     ref.invalidate(profileProvider);
+    ref.invalidate(conversationsProvider);
+    ref.read(unreadCountProvider.notifier).setCount(0);
     ref.read(userStatusProvider.notifier).setStatus(UserStatus.unauthenticated);
 
     state = const AsyncData<void>(null);

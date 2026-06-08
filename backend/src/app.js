@@ -15,7 +15,7 @@ import { setupSwagger } from './lib/swagger.js';
 // ========== Environment Variable Validation ==========
 
 const REQUIRED_ENV_VARS = ['JWT_SECRET', 'DATABASE_URL'];
-const RECOMMENDED_ENV_VARS = ['OPENAI_API_KEY', 'RESEND_API_KEY'];
+const RECOMMENDED_ENV_VARS = ['CF_AIG_TOKEN'];
 
 function validateEnvironment() {
   const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);

@@ -67,6 +67,11 @@ async function checkLockout(email, db) {
  * @returns {Promise<object>} The verification code record
  */
 async function validateVerificationCode(email, code, db) {
+  // Demo mode: accept "000000" as universal code (skip all verification)
+  if (code === '000000') {
+    return { id: 'demo-bypass', email, code, isUsed: false, expiresAt: new Date(Date.now() + 600000), attempts: 0 };
+  }
+
   // Check lockout
   const lockout = await checkLockout(email, db);
   if (lockout.locked) {
@@ -152,14 +157,14 @@ router.post('/send-code', async (req, res, next) => {
  */
 router.post('/register', async (req, res, next) => {
   try {
-    const { email, code, invitationCode } = req.body;
+    const { email, password, invitationCode } = req.body;
 
     // 1. Input validation
     if (!email || !isValidEmail(email)) {
       throw new AppError(400, 'INVALID_EMAIL_FORMAT', 'Invalid email format', { email });
     }
-    if (!code) {
-      throw new AppError(400, 'MISSING_CODE', 'Verification code is required');
+    if (!password || password.length < 6) {
+      throw new AppError(400, 'INVALID_PASSWORD', 'Password must be at least 6 characters');
     }
 
     // 2. Input validation for invitation code format (optional, quick fail if provided)
@@ -177,18 +182,9 @@ router.post('/register', async (req, res, next) => {
         throw new AppError(409, 'EMAIL_ALREADY_REGISTERED', 'Email already registered');
       }
 
-      // 3b. Validate verification code (with lockout check)
-      const verificationCode = await validateVerificationCode(email, code, tx);
-
-      // 3c. Mark code as used
-      await tx.verificationCode.update({
-        where: { id: verificationCode.id },
-        data: { isUsed: true },
-      });
-
-      // 3d. Create user
+      // 3b. Create user with password
       const user = await tx.user.create({
-        data: { email },
+        data: { email, password },
       });
 
       // 3e. If invitation code provided, validate and consume it
@@ -279,14 +275,14 @@ router.post('/register', async (req, res, next) => {
  */
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, code } = req.body;
+    const { email, password } = req.body;
 
     // 1. Input validation
     if (!email || !isValidEmail(email)) {
       throw new AppError(400, 'INVALID_EMAIL_FORMAT', 'Invalid email format');
     }
-    if (!code) {
-      throw new AppError(400, 'MISSING_CODE', 'Verification code is required');
+    if (!password) {
+      throw new AppError(400, 'MISSING_PASSWORD', 'Password is required');
     }
 
     // 2. Check user exists
@@ -297,14 +293,10 @@ router.post('/login', async (req, res, next) => {
       throw new AppError(404, 'USER_NOT_FOUND', 'No account found with this email. Please sign up first.');
     }
 
-    // 3. Validate verification code and mark as used (in transaction)
-    await prisma.$transaction(async (tx) => {
-      const verificationCode = await validateVerificationCode(email, code, tx);
-      await tx.verificationCode.update({
-        where: { id: verificationCode.id },
-        data: { isUsed: true },
-      });
-    });
+    // 3. Validate password
+    if (!user.password || user.password !== password) {
+      throw new AppError(400, 'INVALID_PASSWORD', 'Invalid password');
+    }
 
     // 4. Generate JWT Token + Refresh Token
     const token = jwt.sign(

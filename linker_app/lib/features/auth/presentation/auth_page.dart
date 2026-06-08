@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,72 +23,31 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   final _invitationCodeController = TextEditingController();
   final _emailController = TextEditingController();
-  final _verificationCodeController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   /// Whether we're in login mode (true) or sign up mode (false)
   bool _isLoginMode = false;
 
-  /// Countdown seconds remaining, 0 means not counting
-  int _countdown = 0;
-
-  /// Countdown timer
-  Timer? _timer;
-
-  /// Whether send code is in progress (local state, doesn't affect login button)
-  bool _isSendingCode = false;
-
   @override
   void dispose() {
-    _timer?.cancel();
     _invitationCodeController.dispose();
     _emailController.dispose();
-    _verificationCodeController.dispose();
+    _passwordController.dispose();
     super.dispose();
-  }
-
-  void _startCountdown() {
-    _countdown = 60;
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _countdown--;
-        if (_countdown <= 0) {
-          _countdown = 0;
-          timer.cancel();
-        }
-      });
-    });
-    setState(() {});
-  }
-
-  Future<void> _onSendCode() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) return;
-
-    setState(() => _isSendingCode = true);
-    await ref.read(authProvider.notifier).sendVerificationCode(email);
-    setState(() => _isSendingCode = false);
-
-    final state = ref.read(authProvider);
-    if (state is! AsyncError) {
-      _startCountdown();
-    }
   }
 
   Future<void> _onSubmit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (_isLoginMode) {
-      // Login mode
       await ref.read(authProvider.notifier).login(
             email: _emailController.text.trim(),
-            code: _verificationCodeController.text.trim(),
+            password: _passwordController.text,
           );
     } else {
-      // Sign up mode
       await ref.read(authProvider.notifier).register(
             email: _emailController.text.trim(),
-            code: _verificationCodeController.text.trim(),
+            password: _passwordController.text,
             invitationCode: _invitationCodeController.text.trim(),
           );
     }
@@ -148,7 +105,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
                 _buildEmailField(),
                 const SizedBox(height: AppSizes.spacingMd),
-                _buildVerificationCodeField(isLoading),
+                _buildPasswordField(),
                 const SizedBox(height: AppSizes.spacingXl),
                 _buildSubmitButton(isLoading),
                 const SizedBox(height: AppSizes.spacingMd),
@@ -218,37 +175,21 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     );
   }
 
-  Widget _buildVerificationCodeField(bool isLoading) {
-    final isCounting = _countdown > 0;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: TextFormField(
-            controller: _verificationCodeController,
-            decoration: const InputDecoration(
-              labelText: AppStrings.verificationCodeHint,
-              prefixIcon: Icon(Icons.lock_outline),
-            ),
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
-            validator: Validators.validateVerificationCode,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-          ),
-        ),
-        const SizedBox(width: AppSizes.spacingSm),
-        SizedBox(
-          height: AppSizes.inputHeight,
-          child: ElevatedButton(
-            onPressed: (_isSendingCode || isCounting) ? null : _onSendCode,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(0, AppSizes.inputHeight),
-            ),
-            child: Text(isCounting ? '${_countdown}s' : AppStrings.sendCode),
-          ),
-        ),
-      ],
+  Widget _buildPasswordField() {
+    return TextFormField(
+      controller: _passwordController,
+      decoration: const InputDecoration(
+        labelText: 'Password',
+        prefixIcon: Icon(Icons.lock_outline),
+      ),
+      obscureText: true,
+      textInputAction: TextInputAction.done,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Password is required';
+        if (value.length < 6) return 'At least 6 characters';
+        return null;
+      },
+      autovalidateMode: AutovalidateMode.onUserInteraction,
     );
   }
 
