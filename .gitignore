@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+postgres_data/
+
+# Uploads
+backend/uploads/*.jpg
+backend/uploads/*.png
+backend/uploads/*.jpeg
+
+# Coverage
+coverage/
+
+# Flutter/Dart
+linker_app/.dart_tool/
+linker_app/build/
+linker_app/.flutter-plugins-dependencies
+linker_app/.fvm/
+linker_app/android/.gradle/
+linker_app/android/local.properties
+linker_app/ios/Pods/
+linker_app/ios/.symlinks/
+
+# Backend
+backend/package-lock.json
+
+# Kiro
+.kiro/
+
+# Logs
+*.log

@@ -1,0 +1,43 @@
+services:
+  api-server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: linker-api-server
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://linker:linker_secret@postgres:5432/linker_db?schema=public
+      - TZ=Asia/Shanghai
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: node --watch src/app.js
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: linker-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: linker
+      POSTGRES_PASSWORD: linker_secret
+      POSTGRES_DB: linker_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U linker -d linker_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

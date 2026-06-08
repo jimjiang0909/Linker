@@ -1,0 +1,349 @@
+// Prisma Schema for Linker MVP
+// PostgreSQL 15, UUID primary keys
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 枚举类型 ====================
+
+enum UserStatus {
+  registered
+  profile_completed
+  preference_set
+  suspended
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum DatingIntent {
+  serious_dating
+  casual_social
+  make_friends
+}
+
+enum MatchStatus {
+  pending
+  matched
+  skipped
+  expired
+  closed
+}
+
+enum MatchChoice {
+  interested
+  skipped
+}
+
+enum ConversationStatus {
+  active
+  ended
+}
+
+enum MessageType {
+  text
+  system
+}
+
+enum InvitationSource {
+  user
+  system
+}
+
+enum RecommendationStatus {
+  pending
+  pushed
+  failed
+}
+
+// ==================== 数据模型 ====================
+
+model User {
+  id        String     @id @default(uuid()) @db.Uuid
+  email     String     @unique
+  status    UserStatus @default(registered)
+  invitedBy String?    @map("invited_by") @db.Uuid
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  // 关联关系
+  inviter              User?                 @relation("UserInvitations", fields: [invitedBy], references: [id])
+  invitees             User[]                @relation("UserInvitations")
+  profile              Profile?
+  photos               Photo[]
+  preference           Preference?
+  ownedInvitationCodes InvitationCode[]      @relation("OwnedCodes")
+  usedInvitationCode   InvitationCode?       @relation("UsedCode")
+  matchesAsA           Match[]               @relation("MatchUserA")
+  matchesAsB           Match[]               @relation("MatchUserB")
+  conversationsAsA     Conversation[]        @relation("ConversationUserA")
+  conversationsAsB     Conversation[]        @relation("ConversationUserB")
+  sentMessages         Message[]             @relation("MessageSender")
+  dailyRecommendations DailyRecommendation[]
+  rateLimits           RateLimit[]
+  reportsMade          Report[]              @relation("ReportsMade")
+  reportsReceived      Report[]              @relation("ReportsReceived")
+  offlineMessages      OfflineMessage[]
+  blocksMade           Block[]               @relation("BlocksMade")
+  blocksReceived       Block[]               @relation("BlocksReceived")
+
+  @@map("users")
+}
+
+model Profile {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @unique @map("user_id") @db.Uuid
+  name       String   @db.VarChar(20)
+  birthYear  Int      @map("birth_year")
+  gender     Gender
+  occupation String   @db.VarChar(30)
+  city       String   @db.VarChar(100)
+  bio        String?  @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Photo {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  url       String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sortOrder])
+  @@map("photos")
+}
+
+model Preference {
+  id                String       @id @default(uuid()) @db.Uuid
+  userId            String       @unique @map("user_id") @db.Uuid
+  ageMin            Int          @map("age_min")
+  ageMax            Int          @map("age_max")
+  occupationTypes   String[]     @map("occupation_types")
+  personalityTraits String[]     @map("personality_traits")
+  datingIntent      DatingIntent @map("dating_intent")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("preferences")
+}
+
+model Match {
+  id               String       @id @default(uuid()) @db.Uuid
+  userAId          String       @map("user_a_id") @db.Uuid
+  userBId          String       @map("user_b_id") @db.Uuid
+  score            Int
+  reason           String?
+  status           MatchStatus  @default(pending)
+  userARespondedAt DateTime?    @map("user_a_responded_at")
+  userBRespondedAt DateTime?    @map("user_b_responded_at")
+  userAChoice      MatchChoice? @map("user_a_choice")
+  userBChoice      MatchChoice? @map("user_b_choice")
+  expiresAt        DateTime     @map("expires_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  // 关联关系
+  userA        User          @relation("MatchUserA", fields: [userAId], references: [id])
+  userB        User          @relation("MatchUserB", fields: [userBId], references: [id])
+  conversation Conversation?
+
+  @@index([userAId, status])
+  @@index([userBId, status])
+  @@index([status, expiresAt])
+  @@map("matches")
+}
+
+model Conversation {
+  id           String             @id @default(uuid()) @db.Uuid
+  matchId      String             @unique @map("match_id") @db.Uuid
+  userAId      String             @map("user_a_id") @db.Uuid
+  userBId      String             @map("user_b_id") @db.Uuid
+  status       ConversationStatus @default(active)
+  introduction String?
+  icebreakers  String[]           @default([])
+  createdAt    DateTime           @default(now()) @map("created_at")
+  endedAt      DateTime?          @map("ended_at")
+
+  // 关联关系
+  match    Match     @relation(fields: [matchId], references: [id])
+  userA    User      @relation("ConversationUserA", fields: [userAId], references: [id])
+  userB    User      @relation("ConversationUserB", fields: [userBId], references: [id])
+  messages Message[]
+  reports  Report[]
+
+  @@index([userAId])
+  @@index([userBId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String      @id @default(uuid()) @db.Uuid
+  conversationId String      @map("conversation_id") @db.Uuid
+  senderId       String      @map("sender_id") @db.Uuid
+  content        String
+  type           MessageType @default(text)
+  isRead         Boolean     @default(false) @map("is_read")
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  // 关联关系
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id])
+  reports      Report[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model InvitationCode {
+  id        String           @id @default(uuid()) @db.Uuid
+  code      String           @unique @db.VarChar(8)
+  ownerId   String           @map("owner_id") @db.Uuid
+  usedById  String?          @unique @map("used_by") @db.Uuid
+  source    InvitationSource @default(user)
+  expiresAt DateTime         @map("expires_at")
+  usedAt    DateTime?        @map("used_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  // 关联关系
+  owner  User  @relation("OwnedCodes", fields: [ownerId], references: [id])
+  usedBy User? @relation("UsedCode", fields: [usedById], references: [id])
+
+  @@index([ownerId])
+  @@index([code, expiresAt])
+  @@map("invitation_codes")
+}
+
+model VerificationCode {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String
+  code      String   @db.VarChar(6)
+  attempts  Int      @default(0)
+  isUsed    Boolean  @default(false) @map("is_used")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([email, createdAt])
+  @@index([email, code])
+  @@map("verification_codes")
+}
+
+model DailyRecommendation {
+  id                 String               @id @default(uuid()) @db.Uuid
+  userId             String               @map("user_id") @db.Uuid
+  recommendationDate DateTime             @map("recommendation_date") @db.Date
+  matchIds           String[]             @map("match_ids") @db.Uuid
+  status             RecommendationStatus @default(pending)
+  pushedAt           DateTime?            @map("pushed_at")
+  retryCount         Int                  @default(0) @map("retry_count")
+  createdAt          DateTime             @default(now()) @map("created_at")
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, recommendationDate])
+  @@index([status])
+  @@map("daily_recommendations")
+}
+
+model RateLimit {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  date            DateTime @db.Date
+  interestedCount Int      @default(0) @map("interested_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("rate_limits")
+}
+
+// ==================== 新增：举报系统 ====================
+
+enum ReportStatus {
+  pending
+  reviewed
+  dismissed
+}
+
+model Report {
+  id                String       @id @default(uuid()) @db.Uuid
+  reporterId        String       @map("reporter_id") @db.Uuid
+  reportedUserId    String       @map("reported_user_id") @db.Uuid
+  conversationId    String       @map("conversation_id") @db.Uuid
+  messageId         String       @map("message_id") @db.Uuid
+  reason            String       @db.VarChar(500)
+  status            ReportStatus @default(pending)
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  // 关联关系
+  reporter       User         @relation("ReportsMade", fields: [reporterId], references: [id])
+  reportedUser   User         @relation("ReportsReceived", fields: [reportedUserId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  message        Message      @relation(fields: [messageId], references: [id])
+
+  // 同一用户不能重复举报同一条消息
+  @@unique([reporterId, messageId])
+  @@index([reportedUserId])
+  @@index([status])
+  @@map("reports")
+}
+
+// ==================== 新增：离线消息持久化 ====================
+
+model OfflineMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  event     String   @db.VarChar(50)
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("offline_messages")
+}
+
+// ==================== 新增：用户屏蔽 ====================
+
+model Block {
+  id            String   @id @default(uuid()) @db.Uuid
+  blockerId     String   @map("blocker_id") @db.Uuid
+  blockedUserId String   @map("blocked_user_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // 关联关系
+  blocker     User @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedUser User @relation("BlocksReceived", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedUserId])
+  @@index([blockerId])
+  @@index([blockedUserId])
+  @@map("blocks")
+}
