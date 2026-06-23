@@ -49,11 +49,13 @@ router.get('/', authenticate, async (req, res, next) => {
         userA: {
           include: {
             profile: true,
+            photos: { orderBy: { sortOrder: 'asc' }, take: 1 },
           },
         },
         userB: {
           include: {
             profile: true,
+            photos: { orderBy: { sortOrder: 'asc' }, take: 1 },
           },
         },
         messages: {
@@ -94,6 +96,7 @@ router.get('/', authenticate, async (req, res, next) => {
               name: otherProfile.name,
               occupation: otherProfile.occupation,
               city: otherProfile.city,
+              photo: otherUser.photos?.[0]?.url ?? null,
             }
           : null,
         lastMessage: lastMessage

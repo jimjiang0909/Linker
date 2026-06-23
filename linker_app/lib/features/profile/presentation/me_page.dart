@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -143,15 +144,31 @@ class _MePageState extends ConsumerState<MePage> {
     final photoUrl = (profile != null &&
             profile.photos != null &&
             profile.photos.isNotEmpty)
-        ? profile.photos.first.url as String?
+        ? profile.photos.first.url
         : null;
+
+    if (photoUrl != null) {
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: ApiConstants.fullImageUrl(photoUrl),
+          width: AppSizes.avatarLg,
+          height: AppSizes.avatarLg,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => CircleAvatar(
+            radius: AppSizes.avatarLg / 2,
+            child: const CircularProgressIndicator(strokeWidth: 2),
+          ),
+          errorWidget: (context, url, error) => CircleAvatar(
+            radius: AppSizes.avatarLg / 2,
+            child: const Icon(Icons.person, size: AppSizes.iconXl),
+          ),
+        ),
+      );
+    }
 
     return CircleAvatar(
       radius: AppSizes.avatarLg / 2,
-      backgroundImage: photoUrl != null ? NetworkImage(ApiConstants.fullImageUrl(photoUrl)) : null,
-      child: photoUrl == null
-          ? const Icon(Icons.person, size: AppSizes.iconXl)
-          : null,
+      child: const Icon(Icons.person, size: AppSizes.iconXl),
     );
   }
 

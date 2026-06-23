@@ -62,7 +62,7 @@ class ConversationRepository {
         return Conversation(
           id: item['id'] as String,
           partnerName: otherUser?['name'] as String? ?? 'Unknown',
-          partnerPhotoUrl: null,
+          partnerPhotoUrl: otherUser?['photo'] as String?,
           lastMessage: lastMsg?['content'] as String?,
           lastMessageAt: lastMsg?['createdAt'] != null
               ? DateTime.parse(lastMsg!['createdAt'] as String)

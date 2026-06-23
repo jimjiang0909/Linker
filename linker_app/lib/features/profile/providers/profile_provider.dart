@@ -41,10 +41,11 @@ class ProfileNotifier extends Notifier<AsyncValue<Profile?>> {
   /// 调用 [ProfileRepository.updateProfile]，成功后将 state 更新为
   /// 后端返回的最新 Profile 数据，并更新用户状态为 profileCompleted。
   Future<void> updateProfile(ProfileUpdateRequest request) async {
+    final existingPhotos = state.value?.photos ?? [];
     state = const AsyncLoading<Profile?>();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(profileRepositoryProvider);
-      final profile = await repository.updateProfile(request);
+      final profile = await repository.updateProfile(request, existingPhotos: existingPhotos);
 
       // Update user status to profileCompleted after saving profile (only during onboarding)
       final currentStatus = ref.read(userStatusProvider);

@@ -77,16 +77,17 @@ class ProfileRepository {
   ///
   /// 调用 PUT /api/profile
   /// 返回更新后的 [Profile] 对象。
-  Future<Profile> updateProfile(ProfileUpdateRequest request) async {
+  Future<Profile> updateProfile(ProfileUpdateRequest request, {List<Photo> existingPhotos = const []}) async {
     final response = await _apiClient.put(
       ApiConstants.profile,
       data: request.toJson(),
     );
     final json = response.data as Map<String, dynamic>;
     final data = json['data'] as Map<String, dynamic>;
-    // Backend returns { profile: {...} }
     final profileData = data['profile'] as Map<String, dynamic>;
-    return _parseProfile(profileData, []);
+    // Backend PUT /api/profile returns { profile } without photos,
+    // so fall back to the existing photos passed from the provider.
+    return _parseProfile(profileData, existingPhotos.map((p) => p.toJson()).toList());
   }
 
   /// Parse Prisma profile (snake_case) to Profile model (camelCase)
