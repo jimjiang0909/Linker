@@ -44,31 +44,47 @@ export async function createReport(reporterId, conversationId, messageId, reason
     throw new AppError(403, 'NOT_PARTICIPANT', 'You are not a participant of this conversation');
   }
 
-  // 3. Verify message exists and belongs to this conversation
-  const message = await db.message.findUnique({
-    where: { id: messageId },
-  });
+  // 3. Determine reported user
+  let reportedUserId;
 
-  if (!message || message.conversationId !== conversationId) {
-    throw new AppError(404, 'MESSAGE_NOT_FOUND', 'Reported message not found');
+  if (messageId) {
+    // Verify message exists and belongs to this conversation
+    const message = await db.message.findUnique({
+      where: { id: messageId },
+    });
+
+    if (!message || message.conversationId !== conversationId) {
+      throw new AppError(404, 'MESSAGE_NOT_FOUND', 'Reported message not found');
+    }
+
+    // 4. Cannot report your own message
+    if (message.senderId === reporterId) {
+      throw new AppError(400, 'CANNOT_REPORT_SELF', 'You cannot report your own message');
+    }
+
+    reportedUserId = message.senderId;
+  } else {
+    // No specific message, report the other participant
+    reportedUserId = conversation.userAId === reporterId
+      ? conversation.userBId
+      : conversation.userAId;
   }
-
-  // 4. Cannot report your own message
-  if (message.senderId === reporterId) {
-    throw new AppError(400, 'CANNOT_REPORT_SELF', 'You cannot report your own message');
-  }
-
-  const reportedUserId = message.senderId;
 
   // 5. Deduplication check
-  const existingReport = await db.report.findUnique({
-    where: {
-      reporterId_messageId: {
-        reporterId,
-        messageId,
-      },
-    },
-  });
+  const deduplicationWhere = messageId
+    ? { reporterId_messageId: { reporterId, messageId } }
+    : { reporterId_conversationId: { reporterId, conversationId } };
+
+  let existingReport;
+  if (messageId) {
+    existingReport = await db.report.findUnique({
+      where: { reporterId_messageId: { reporterId, messageId } },
+    });
+  } else {
+    existingReport = await db.report.findFirst({
+      where: { reporterId, conversationId, messageId: null },
+    });
+  }
 
   if (existingReport) {
     throw new AppError(409, 'ALREADY_REPORTED', 'You have already reported this message');
@@ -80,7 +96,7 @@ export async function createReport(reporterId, conversationId, messageId, reason
       reporterId,
       reportedUserId,
       conversationId,
-      messageId,
+      ...(messageId && { messageId }),
       reason,
     },
   });

@@ -324,14 +324,6 @@ router.post('/:id/report', authenticate, async (req, res, next) => {
     const conversationId = req.params.id;
     const { messageId, reason } = req.body;
 
-    if (!messageId) {
-      return res.status(400).json({
-        code: 'MISSING_MESSAGE_ID',
-        message: 'Please specify the reported message',
-        details: {},
-      });
-    }
-
     if (!reason || reason.trim().length === 0) {
       return res.status(400).json({
         code: 'MISSING_REASON',
